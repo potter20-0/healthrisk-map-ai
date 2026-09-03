@@ -1,0 +1,5 @@
+{
+  "name": "HealthRisk Map AI",
+  "description": "ระบบแผนที่ความเสี่ยงสุขภาพชุมชนอัจฉริยะ รองรับการใช้งานบนมือถือและเดสก์ท็อป",
+  "requestFramePermissions": ["geolocation"]
+}
