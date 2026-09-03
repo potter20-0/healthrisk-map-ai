@@ -2,7 +2,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Layers, LocateFixed, Maximize2, Minus, Plus, Satellite, Waves } from 'lucide-react';
+import { Layers, LocateFixed, Maximize2, Minus, Plus } from 'lucide-react';
 import type { Village } from '../data';
 import { cn } from '../lib/utils';
 import { RISK, RISK_ORDER, pm25Band } from '../lib/risk';
@@ -50,9 +50,9 @@ function ViewController({ view }: { view: MapView }) {
 
 function villageIcon(village: Village, selected: boolean) {
   const hex = RISK[village.risk].hex;
-  const size = selected ? 20 : village.risk === 'critical' ? 16 : 13;
+  const size = selected ? 20 : village.risk === 'critical' ? 15 : 12;
   return L.divIcon({
-    className: 'bg-transparent border-0',
+    className: 'relative bg-transparent border-0',
     html: `<div class="marker-dot${village.risk === 'critical' ? ' is-critical' : ''}${
       selected ? ' is-selected' : ''
     }" style="--dot:${hex}"></div>`,
@@ -83,37 +83,39 @@ function VillageMarker({
       eventHandlers={{ click: () => onSelect(village) }}
     >
       <Popup>
-        <div className="w-48 p-3">
-          <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="w-44 p-3">
+          <div className="flex items-start gap-2">
+            <span className={cn('mt-1 size-2 shrink-0 rounded-full', r.dot)} />
             <div className="min-w-0">
-              <h3 className="truncate text-[13px] font-bold text-ink">{village.name}</h3>
-              <p className="text-[10px] text-ink-3">{village.province}</p>
+              <h3 className="truncate text-[13px] font-semibold tracking-tight text-ink">
+                {village.name}
+              </h3>
+              <p className="text-[10.5px] text-ink-3">{village.province}</p>
             </div>
-            <span className={cn('mt-1 size-2.5 shrink-0 rounded-full', r.bg)} />
           </div>
-          <dl className="space-y-1 border-t border-line pt-2">
-            <div className="flex justify-between text-[10px]">
-              <dt className="text-ink-3">PM2.5</dt>
-              <dd className={cn('font-mono font-bold', RISK[air.level].text)}>
-                {village.pm25} µg/m³
-              </dd>
+          <div className="mt-2.5 flex items-end justify-between border-t border-hairline pt-2.5">
+            <div>
+              <p className="text-[9.5px] text-ink-3">PM2.5</p>
+              <p
+                className={cn(
+                  'font-mono text-base font-semibold leading-none',
+                  RISK[air.level].text,
+                )}
+              >
+                {village.pm25}
+              </p>
             </div>
-            <div className="flex justify-between text-[10px]">
-              <dt className="text-ink-3">ระดับความเสี่ยง</dt>
-              <dd className={cn('font-bold', r.text)}>{r.label}</dd>
-            </div>
-            <div className="flex justify-between gap-2 text-[10px]">
-              <dt className="shrink-0 text-ink-3">คาดการณ์</dt>
-              <dd className="truncate font-medium text-ink-2">{village.disease}</dd>
-            </div>
-          </dl>
+            <p className="max-w-[52%] truncate text-right text-[10.5px] text-ink-2">
+              {village.disease}
+            </p>
+          </div>
         </div>
       </Popup>
     </Marker>
   );
 }
 
-/* ── Floating control button ─────────────────────────────────── */
+/* ── Floating control ────────────────────────────────────────── */
 
 function MapButton({
   icon: Icon,
@@ -132,8 +134,8 @@ function MapButton({
       title={label}
       aria-label={label}
       className={cn(
-        'flex size-9 items-center justify-center rounded-xl border bg-surface/90 shadow-card backdrop-blur transition-all hover:bg-surface active:scale-95',
-        active ? 'border-brand/40 text-brand' : 'border-line text-ink-2 hover:text-ink',
+        'grid size-8 place-items-center transition-colors hover:bg-fill active:bg-hairline',
+        active ? 'text-brand' : 'text-ink-2 hover:text-ink',
       )}
     >
       <Icon className="size-4" />
@@ -215,29 +217,29 @@ export function MapPanel({
         )}
       </MapContainer>
 
-      {/* Live data source chips */}
-      <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col items-start gap-1.5">
-        <span className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-2.5 py-1 font-mono text-[10px] font-medium text-ink-2 shadow-card backdrop-blur">
-          <Satellite className="size-3 text-brand" />
-          SENTINEL-5P
-          <span className="flex items-center gap-1 font-bold text-risk-low">
-            <span className="size-1.5 animate-pulse rounded-full bg-risk-low" />
-            ACTIVE
-          </span>
+      {/* Live indicator — one quiet chip instead of two mono badges */}
+      <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-surface/95 py-1.5 pl-2.5 pr-3 shadow-pop ring-1 ring-hairline backdrop-blur">
+        <span className="relative flex size-1.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-low opacity-60" />
+          <span className="relative inline-flex size-1.5 rounded-full bg-low" />
         </span>
-        <span className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-2.5 py-1 font-mono text-[10px] font-medium text-ink-2 shadow-card backdrop-blur">
-          <Waves className="size-3 text-brand-2" />
-          GISTDA FLOOD
-          <span className="font-bold text-brand-2">LIVE</span>
+        <span className="text-[10.5px] font-medium text-ink-2">
+          Sentinel-5P &amp; GISTDA · ถ่ายทอดสด
         </span>
       </div>
 
-      {/* Controls */}
-      <div className="absolute right-3 top-3 z-10 flex flex-col gap-1.5">
+      {/* Controls — one grouped stack, not five floating pills */}
+      <div className="absolute right-3 top-3 z-10 flex flex-col overflow-hidden rounded-xl bg-surface/95 shadow-pop ring-1 ring-hairline backdrop-blur">
         <MapButton icon={Plus} label="ซูมเข้า" onClick={() => map?.zoomIn()} />
         <MapButton icon={Minus} label="ซูมออก" onClick={() => map?.zoomOut()} />
+        <span className="mx-1.5 h-px bg-hairline" />
         <MapButton icon={Maximize2} label="ดูทั้งประเทศ" onClick={onReset} />
-        <MapButton icon={LocateFixed} label="ตำแหน่งของฉัน" onClick={onLocate} active={!!userPos} />
+        <MapButton
+          icon={LocateFixed}
+          label="ตำแหน่งของฉัน"
+          onClick={onLocate}
+          active={!!userPos}
+        />
         <MapButton
           icon={Layers}
           label={`แผนที่: ${tiles.label}`}
@@ -247,23 +249,18 @@ export function MapPanel({
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-3 left-3 z-10 hidden rounded-xl border border-line bg-surface/90 px-3 py-2 shadow-card backdrop-blur sm:block">
-        <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-ink-3">
-          ระดับความเสี่ยง
-        </p>
-        <div className="flex gap-3">
-          {RISK_ORDER.map((lvl) => (
-            <span key={lvl} className="flex items-center gap-1.5 text-[10px] font-medium text-ink-2">
-              <span className={cn('size-2 rounded-full', RISK[lvl].bg)} />
-              {RISK[lvl].label}
-            </span>
-          ))}
-        </div>
+      <div className="absolute bottom-3 left-3 z-10 hidden items-center gap-3 rounded-full bg-surface/95 px-3 py-1.5 shadow-pop ring-1 ring-hairline backdrop-blur sm:flex">
+        {RISK_ORDER.map((lvl) => (
+          <span key={lvl} className="flex items-center gap-1.5 text-[10.5px] text-ink-2">
+            <span className={cn('size-2 rounded-full', RISK[lvl].dot)} />
+            {RISK[lvl].label}
+          </span>
+        ))}
       </div>
 
-      {/* Result counter */}
-      <div className="absolute bottom-3 right-3 z-10 rounded-full border border-line bg-surface/90 px-2.5 py-1 font-mono text-[10px] font-medium text-ink-2 shadow-card backdrop-blur">
-        แสดง <span className="font-bold text-brand">{villages.length}</span> จุด
+      {/* Result count */}
+      <div className="absolute bottom-3 right-3 z-10 rounded-full bg-surface/95 px-2.5 py-1 text-[10.5px] text-ink-2 shadow-pop ring-1 ring-hairline backdrop-blur">
+        <span className="font-mono font-semibold text-ink">{villages.length}</span> จุด
       </div>
     </div>
   );

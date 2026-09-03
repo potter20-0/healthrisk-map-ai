@@ -3,37 +3,60 @@
 
 /* ─────────────────────────────────────────────────────────────
    Design tokens — light theme
+
+   Each risk level carries four values, because one colour cannot do
+   both jobs: `-dot` is vivid enough to read as a 12px marker on a pale
+   basemap, `-ink` is dark enough to pass AA as text on white, and the
+   `-bg`/`-line` pair tints containers without muddying either.
    ───────────────────────────────────────────────────────────── */
 @theme {
-  /* Surfaces */
-  --color-bg: #eef2f7;
+  /* Surfaces — three steps, no more */
+  --color-bg: #f5f6f8;
   --color-surface: #ffffff;
-  --color-surface-2: #f6f8fb;
-  --color-line: #e3e9f1;
-  --color-line-strong: #cfd8e5;
+  --color-fill: #f2f4f7;
+  --color-hairline: #e7eaef;
 
-  /* Text */
-  --color-ink: #0f172a;
-  --color-ink-2: #475569;
-  --color-ink-3: #8fa0b6;
+  /* Ink */
+  --color-ink: #0b1220;
+  --color-ink-2: #5a6678;
+  --color-ink-3: #98a2b3;
 
   /* Brand */
-  --color-brand: #0369a1;
-  --color-brand-2: #0d9488;
+  --color-brand: #0f766e;
+  --color-brand-accent: #14b8a6;
+  --color-brand-bg: #effcf8;
+  --color-brand-line: #b8e8de;
 
-  /* Risk scale — tuned for AA contrast on white */
-  --color-risk-critical: #dc2626;
-  --color-risk-high: #ea580c;
-  --color-risk-medium: #b45309;
-  --color-risk-low: #15803d;
+  /* Risk scale */
+  --color-critical: #e5484d;
+  --color-critical-ink: #b42318;
+  --color-critical-bg: #fef3f2;
+  --color-critical-line: #fecdca;
+
+  --color-high: #f76808;
+  --color-high-ink: #b93815;
+  --color-high-bg: #fff4ed;
+  --color-high-line: #fdd0a8;
+
+  --color-medium: #f5a524;
+  --color-medium-ink: #b54708;
+  --color-medium-bg: #fffaeb;
+  --color-medium-line: #fedf89;
+
+  --color-low: #30a46c;
+  --color-low-ink: #087443;
+  --color-low-bg: #ecfdf3;
+  --color-low-line: #abefc6;
 
   --font-sans: "Inter", "Noto Sans Thai", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 6px 20px -12px rgb(15 23 42 / 0.14);
-  --shadow-float: 0 2px 8px rgb(15 23 42 / 0.05), 0 20px 44px -18px rgb(15 23 42 / 0.28);
-  --shadow-header: 0 1px 0 rgb(15 23 42 / 0.05), 0 6px 24px -20px rgb(15 23 42 / 0.4);
+  /* Elevation — soft and layered, never a hard drop shadow */
+  --shadow-xs: 0 1px 2px rgb(11 18 32 / 0.05);
+  --shadow-card: 0 1px 2px rgb(11 18 32 / 0.04), 0 4px 12px -4px rgb(11 18 32 / 0.06);
+  --shadow-pop: 0 2px 6px rgb(11 18 32 / 0.05), 0 12px 28px -8px rgb(11 18 32 / 0.14);
+  --shadow-float: 0 4px 10px rgb(11 18 32 / 0.06), 0 24px 48px -16px rgb(11 18 32 / 0.24);
 }
 
 @layer base {
@@ -43,16 +66,18 @@
 
   body {
     @apply bg-bg text-ink font-sans antialiased;
-    /* Subtle grid wash so large empty areas don't read as flat white */
-    background-image:
-      radial-gradient(circle at 100% 0%, rgb(3 105 161 / 0.05), transparent 42%),
-      radial-gradient(circle at 0% 100%, rgb(13 148 136 / 0.05), transparent 40%);
-    background-attachment: fixed;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Numerals should never reflow as values tick */
+  .tnum,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
   }
 
   ::selection {
-    background: #bae6fd;
-    color: #0c4a6e;
+    background: #99f6e4;
+    color: #0f766e;
   }
 
   button {
@@ -62,22 +87,25 @@
   input {
     @apply outline-none;
   }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-accent;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Leaflet — light basemap chrome
+   Leaflet chrome
    ───────────────────────────────────────────────────────────── */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  background: #e8edf4 !important;
+  background: #eaedf2 !important;
   font-family: inherit;
 }
 
 .leaflet-popup-content-wrapper {
   padding: 0;
-  border-radius: 16px;
-  border: 1px solid var(--color-line);
+  border-radius: 14px;
   box-shadow: var(--shadow-float);
   background: var(--color-surface);
 }
@@ -90,7 +118,6 @@
 
 .leaflet-popup-tip {
   background: var(--color-surface);
-  border: 1px solid var(--color-line);
   box-shadow: none;
 }
 
@@ -99,12 +126,12 @@
 }
 
 .leaflet-control-attribution {
-  background: rgb(255 255 255 / 0.82) !important;
+  background: rgb(255 255 255 / 0.72) !important;
   backdrop-filter: blur(6px);
-  border-radius: 8px 0 0 0;
+  border-radius: 6px 0 0 0;
   color: var(--color-ink-3) !important;
-  font-size: 10px !important;
-  padding: 2px 8px !important;
+  font-size: 9px !important;
+  padding: 1px 6px !important;
 }
 
 .leaflet-control-attribution a {
@@ -112,23 +139,21 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Map markers
+   Markers
    ───────────────────────────────────────────────────────────── */
 .marker-dot {
-  position: relative;
   width: 100%;
   height: 100%;
   border-radius: 9999px;
   background: var(--dot);
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 5px rgb(15 23 42 / 0.35);
-  transition: transform 0.15s ease;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(11 18 32 / 0.3);
 }
 
 .marker-dot.is-selected {
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--dot) 26%, transparent),
-    0 2px 8px rgb(15 23 42 / 0.35);
+    0 0 0 4px color-mix(in srgb, var(--dot) 24%, transparent),
+    0 2px 8px rgb(11 18 32 / 0.32);
 }
 
 .marker-dot.is-critical::after {
@@ -137,18 +162,18 @@
   inset: -2px;
   border-radius: 9999px;
   background: var(--dot);
-  opacity: 0.45;
+  opacity: 0.4;
   z-index: -1;
-  animation: risk-pulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  animation: risk-pulse 2.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
 @keyframes risk-pulse {
   0% {
     transform: scale(0.7);
-    opacity: 0.5;
+    opacity: 0.45;
   }
   100% {
-    transform: scale(2.6);
+    transform: scale(2.7);
     opacity: 0;
   }
 }
@@ -158,32 +183,32 @@
   height: 100%;
   border-radius: 9999px;
   background: #2563eb;
-  border: 3px solid #ffffff;
-  box-shadow: 0 0 0 4px rgb(37 99 235 / 0.22), 0 2px 6px rgb(15 23 42 / 0.3);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px rgb(37 99 235 / 0.2), 0 2px 6px rgb(11 18 32 / 0.28);
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Scrollbars
+   Utilities
    ───────────────────────────────────────────────────────────── */
 .thin-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-line-strong) transparent;
+  scrollbar-color: #d4dae3 transparent;
 }
 
 .thin-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 .thin-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-line-strong);
-  border: 2px solid transparent;
+  background: #d4dae3;
+  border: 3px solid transparent;
   background-clip: content-box;
   border-radius: 9999px;
 }
 
 .thin-scroll::-webkit-scrollbar-thumb:hover {
-  background: #b6c2d4;
+  background: #bcc5d2;
   background-clip: content-box;
 }
 
@@ -198,4 +223,15 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Edge fade for horizontally scrolling filter rows */
+.fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 12px,
+    #000 calc(100% - 12px),
+    transparent 100%
+  );
 }

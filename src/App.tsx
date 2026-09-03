@@ -2,20 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-  Activity,
-  AlertTriangle,
   BarChart3,
   Bell,
+  Check,
   Copy,
   Droplets,
-  Link2,
   List,
   Map as MapIcon,
   Search,
   Share2,
-  Siren,
-  Sparkles,
-  Users,
   Waves,
   Wind,
   X,
@@ -25,14 +20,16 @@ import { VILLAGES, type Village } from './data';
 import { cn } from './lib/utils';
 import { RISK, RISK_ORDER, distanceKm, type RiskLevel } from './lib/risk';
 import {
-  FilterPill,
+  BigStat,
+  CountChip,
+  FeedRow,
   NavButton,
   RiskDistribution,
-  SatFeedItem,
   SectionTitle,
-  StatTile,
+  Segmented,
   TimelineItem,
 } from './components/primitives';
+import { LogoTile, Wordmark } from './components/Logo';
 import { VillageCard } from './components/VillageCard';
 import { VillageDetail } from './components/VillageDetail';
 import { MapPanel, THAILAND_VIEW, type MapView } from './components/MapPanel';
@@ -41,10 +38,26 @@ type Tab = 'map' | 'list' | 'stats' | 'alerts';
 type Filter = RiskLevel | 'all';
 
 const ALERTS = [
-  { time: '08:32 น.', text: 'PM2.5 เกินมาตรฐาน 3 เท่า — บ้านหนองผา จ.เชียงราย', level: 'critical' as const },
-  { time: 'เมื่อวาน', text: 'รายงานอาการหายใจลำบาก 8 ราย — เขตภาคเหนือตอนบน', level: 'high' as const },
-  { time: '2 วันก่อน', text: 'แจ้งเตือน อสม. พื้นที่เสี่ยงน้ำท่วมขัง 6 ตำบล', level: 'medium' as const },
-  { time: '4 วันก่อน', text: 'ผลตรวจน้ำบาดาลผ่านเกณฑ์ — ภาคใต้ฝั่งอันดามัน', level: 'low' as const },
+  {
+    time: 'วันนี้ 08:32 น.',
+    text: 'PM2.5 เกินมาตรฐาน 3 เท่า — บ้านหนองผา จ.เชียงราย',
+    level: 'critical' as const,
+  },
+  {
+    time: 'เมื่อวาน',
+    text: 'รายงานอาการหายใจลำบาก 8 ราย — ภาคเหนือตอนบน',
+    level: 'high' as const,
+  },
+  {
+    time: '2 วันก่อน',
+    text: 'แจ้งเตือน อสม. พื้นที่เสี่ยงน้ำท่วมขัง 6 ตำบล',
+    level: 'medium' as const,
+  },
+  {
+    time: '4 วันก่อน',
+    text: 'ผลตรวจน้ำบาดาลผ่านเกณฑ์ — ภาคใต้ฝั่งอันดามัน',
+    level: 'low' as const,
+  },
 ];
 
 export default function App() {
@@ -56,14 +69,8 @@ export default function App() {
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [clock, setClock] = useState(() => new Date());
 
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  /* ── Derived data ─────────────────────────────────────────── */
+  /* ── Derived ──────────────────────────────────────────────── */
 
   const counts = useMemo(() => {
     const c: Record<RiskLevel, number> = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -74,6 +81,7 @@ export default function App() {
   const summary = useMemo(() => {
     const atRisk = VILLAGES.filter((v) => v.risk === 'critical' || v.risk === 'high');
     return {
+      atRiskCount: atRisk.length,
       avgPm25: Math.round(VILLAGES.reduce((s, v) => s + v.pm25, 0) / VILLAGES.length),
       population: atRisk.reduce((s, v) => s + v.population, 0),
       unsafeWater: VILLAGES.filter((v) => v.water === 'Unsafe').length,
@@ -138,25 +146,30 @@ export default function App() {
     }
   }, []);
 
-  /* ── Shared fragments ─────────────────────────────────────── */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showQR) setShowQR(false);
+        else if (selected) setSelected(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showQR, selected]);
 
-  const filterBar = (
-    <div className="flex flex-wrap gap-1.5">
-      <FilterPill active={filter === 'all'} onClick={() => setFilter('all')} count={VILLAGES.length}>
-        ทั้งหมด
-      </FilterPill>
-      {RISK_ORDER.map((lvl) => (
-        <FilterPill
-          key={lvl}
-          active={filter === lvl}
-          onClick={() => setFilter((f) => (f === lvl ? 'all' : lvl))}
-          dot={RISK[lvl].hex}
-          count={counts[lvl]}
-        >
-          {RISK[lvl].label}
-        </FilterPill>
-      ))}
-    </div>
+  /* ── Fragments ────────────────────────────────────────────── */
+
+  const filterOptions = useMemo(
+    () => [
+      { value: 'all' as Filter, label: 'ทั้งหมด', count: VILLAGES.length },
+      ...RISK_ORDER.map((lvl) => ({
+        value: lvl as Filter,
+        label: RISK[lvl].label,
+        dot: RISK[lvl].hex,
+        count: counts[lvl],
+      })),
+    ],
+    [counts],
   );
 
   const searchBox = (
@@ -165,14 +178,14 @@ export default function App() {
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="ค้นหาหมู่บ้าน จังหวัด หรือโรค…"
-        className="w-full rounded-xl border border-line bg-surface-2 py-2.5 pl-9 pr-9 text-[13px] font-medium text-ink placeholder:text-ink-3 transition-colors focus:border-brand/40 focus:bg-surface focus:ring-2 focus:ring-brand/10"
+        placeholder="ค้นหาหมู่บ้าน จังหวัด หรือโรค"
+        className="w-full rounded-xl bg-fill py-2.5 pl-9 pr-9 text-[13px] text-ink transition-all placeholder:text-ink-3 focus:bg-surface focus:ring-2 focus:ring-brand/25"
       />
       {query && (
         <button
           onClick={() => setQuery('')}
           aria-label="ล้างการค้นหา"
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-3 transition-colors hover:bg-line hover:text-ink"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-3 transition-colors hover:bg-hairline hover:text-ink"
         >
           <X className="size-3.5" />
         </button>
@@ -180,53 +193,55 @@ export default function App() {
     </div>
   );
 
-  const villageList = (empty: string) =>
-    visible.length ? (
-      visible.map((v) => (
-        <VillageCard
-          key={v.id}
-          village={v}
-          active={selected?.id === v.id}
-          distance={distances?.get(v.id)}
-          onClick={() => selectVillage(v)}
-        />
-      ))
-    ) : (
-      <div className="rounded-2xl border border-dashed border-line-strong bg-surface-2 px-4 py-10 text-center">
-        <Search className="mx-auto mb-2 size-5 text-ink-3" />
-        <p className="text-[13px] font-semibold text-ink-2">{empty}</p>
-        <button
-          onClick={() => {
-            setQuery('');
-            setFilter('all');
-          }}
-          className="mt-2 text-[11px] font-semibold text-brand hover:underline"
-        >
-          ล้างตัวกรองทั้งหมด
-        </button>
-      </div>
-    );
+  const villageList = (
+    <div className="space-y-0.5">
+      {visible.length ? (
+        visible.map((v) => (
+          <VillageCard
+            key={v.id}
+            village={v}
+            active={selected?.id === v.id}
+            distance={distances?.get(v.id)}
+            onClick={() => selectVillage(v)}
+          />
+        ))
+      ) : (
+        <div className="px-4 py-14 text-center">
+          <p className="text-[13px] font-medium text-ink">ไม่พบหมู่บ้านที่ตรงกับเงื่อนไข</p>
+          <button
+            onClick={() => {
+              setQuery('');
+              setFilter('all');
+            }}
+            className="mt-1.5 text-[12px] font-medium text-brand hover:underline"
+          >
+            ล้างตัวกรองทั้งหมด
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   const feedsAndAlerts = (
     <>
       <section>
-        <SectionTitle>ข้อมูลจากดาวเทียม</SectionTitle>
-        <div className="space-y-2">
-          <SatFeedItem
+        <SectionTitle className="mb-1">ข้อมูลจากดาวเทียม</SectionTitle>
+        <div className="divide-y divide-hairline">
+          <FeedRow
             icon={Wind}
-            name="PM2.5 · Sentinel-5P"
-            value={`ค่าเฉลี่ย ${summary.avgPm25} µg/m³`}
+            name="ฝุ่น PM2.5"
+            value={`Sentinel-5P · เฉลี่ย ${summary.avgPm25} µg/m³`}
             status="ALERT"
             level="critical"
           />
-          <SatFeedItem
+          <FeedRow
             icon={Waves}
-            name="น้ำท่วมขัง · GISTDA"
-            value="ระดับปานกลาง 6 ตำบล"
+            name="น้ำท่วมขัง"
+            value="GISTDA · ระดับปานกลาง 6 ตำบล"
             status="WATCH"
             level="medium"
           />
-          <SatFeedItem
+          <FeedRow
             icon={Droplets}
             name="คุณภาพน้ำผิวดิน"
             value={`ไม่ปลอดภัย ${summary.unsafeWater} จุด`}
@@ -237,8 +252,8 @@ export default function App() {
       </section>
 
       <section>
-        <SectionTitle>การแจ้งเตือนล่าสุด</SectionTitle>
-        <div className="relative space-y-4 before:absolute before:bottom-2 before:left-[4.5px] before:top-2 before:w-px before:bg-line">
+        <SectionTitle className="mb-3">การแจ้งเตือนล่าสุด</SectionTitle>
+        <div className="space-y-3.5">
           {ALERTS.map((a) => (
             <TimelineItem key={a.text} time={a.time} text={a.text} level={a.level} />
           ))}
@@ -252,100 +267,77 @@ export default function App() {
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-bg">
       {/* ── Header ── */}
-      <header className="z-50 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface/85 px-3 shadow-header backdrop-blur-xl md:h-16 md:px-5">
+      <header className="z-50 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface px-3 md:px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-brand to-brand-2 shadow-lg shadow-brand/20 md:size-10">
-            <Activity className="size-5 text-white" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-extrabold tracking-tight text-ink md:text-base">
-              HealthRisk Map <span className="text-brand">AI</span>
-            </h1>
-            <p className="hidden text-[10px] font-medium text-ink-3 sm:block md:text-[11px]">
-              ระบบแผนที่ความเสี่ยงสุขภาพชุมชนอัจฉริยะ
-            </p>
-          </div>
+          <LogoTile className="size-8 shrink-0" />
+          <span className="min-w-0 truncate">
+            <Wordmark />
+          </span>
+          <span className="ml-1 hidden rounded-md bg-brand-bg px-1.5 py-0.5 text-[10px] font-semibold text-brand sm:inline">
+            AI
+          </span>
         </div>
 
-        <div className="hidden items-center gap-4 lg:flex">
-          <span className="flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-2.5 py-1 font-mono text-[11px] font-medium text-ink-2">
-            <span className="size-1.5 animate-pulse rounded-full bg-risk-low" />
-            LIVE {clock.toLocaleTimeString('th-TH')}
+        <div className="hidden items-center gap-5 lg:flex">
+          <span className="text-[12px] text-ink-2">
+            <span className="font-mono font-semibold text-ink">{VILLAGES.length}</span> หมู่บ้าน
           </span>
-          <span className="font-mono text-[11px] text-ink-3">
-            หมู่บ้าน <span className="font-bold text-ink">{VILLAGES.length}</span>
-          </span>
-          <span className="font-mono text-[11px] text-ink-3">
-            เสี่ยงสูง{' '}
-            <span className="font-bold text-risk-critical">
-              {counts.critical + counts.high}
+          <span className="h-3.5 w-px bg-hairline" />
+          <span className="text-[12px] text-ink-2">
+            เฝ้าระวัง{' '}
+            <span className="font-mono font-semibold text-critical-ink">
+              {summary.atRiskCount}
             </span>
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            onClick={() => setShowQR(true)}
-            aria-label="แชร์แอป"
-            className="flex size-9 items-center justify-center rounded-xl border border-line bg-surface text-ink-2 transition-all hover:border-line-strong hover:text-ink active:scale-95"
-          >
-            <Share2 className="size-4" />
-          </button>
-        </div>
+        <button
+          onClick={() => setShowQR(true)}
+          aria-label="แชร์แอป"
+          className="grid size-8 shrink-0 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-fill hover:text-ink"
+        >
+          <Share2 className="size-[1.05rem]" />
+        </button>
       </header>
 
       {/* ── Body ── */}
       <main className="relative flex flex-1 overflow-hidden">
-        {/* Left rail — browse */}
-        <aside className="hidden w-84 shrink-0 flex-col border-r border-line bg-surface md:flex">
-          <div className="space-y-3 border-b border-line p-4">
-            <SectionTitle>ภาพรวมความเสี่ยง</SectionTitle>
-            <div className="grid grid-cols-2 gap-2">
-              <StatTile
-                label="วิกฤต"
-                value={counts.critical}
-                level="critical"
-                active={filter === 'critical'}
-                onClick={() => setFilter((f) => (f === 'critical' ? 'all' : 'critical'))}
-              />
-              <StatTile
-                label="สูง"
-                value={counts.high}
-                level="high"
-                active={filter === 'high'}
-                onClick={() => setFilter((f) => (f === 'high' ? 'all' : 'high'))}
-              />
+        {/* Left rail */}
+        <aside className="hidden w-84 shrink-0 flex-col border-r border-hairline bg-surface md:flex">
+          {/* Hero — one big number, not four equal tiles */}
+          <div className="px-4 pb-4 pt-5">
+            <BigStat
+              value={summary.atRiskCount}
+              label="หมู่บ้านที่ต้องเฝ้าระวัง"
+              sub={`ประชากร ${summary.population.toLocaleString('th-TH')} คน`}
+              level="critical"
+            />
+            <div className="mt-4">
+              <RiskDistribution counts={counts} total={VILLAGES.length} />
             </div>
-            <RiskDistribution counts={counts} total={VILLAGES.length} />
-            <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2">
-              <Users className="size-4 shrink-0 text-brand" />
-              <p className="text-[11px] font-medium leading-tight text-ink-2">
-                ประชากรในพื้นที่เสี่ยงสูง{' '}
-                <span className="font-mono font-bold text-ink">
-                  {summary.population.toLocaleString('th-TH')}
-                </span>{' '}
-                คน
-              </p>
+            <div className="mt-3 grid grid-cols-4 gap-0.5">
+              {RISK_ORDER.map((lvl) => (
+                <CountChip
+                  key={lvl}
+                  level={lvl}
+                  value={counts[lvl]}
+                  active={filter === lvl}
+                  onClick={() => setFilter((f) => (f === lvl ? 'all' : lvl))}
+                />
+              ))}
             </div>
           </div>
 
-          <div className="space-y-3 border-b border-line p-4">
+          <div className="space-y-2.5 border-t border-hairline px-4 py-3.5">
             {searchBox}
-            {filterBar}
+            <Segmented<Filter> options={filterOptions} value={filter} onChange={setFilter} />
           </div>
 
-          <div className="thin-scroll flex-1 space-y-2.5 overflow-y-auto p-4">
-            {villageList('ไม่พบหมู่บ้านที่ตรงกับเงื่อนไข')}
-          </div>
+          <div className="thin-scroll flex-1 overflow-y-auto px-2 pb-4 pt-1">{villageList}</div>
         </aside>
 
         {/* Map */}
-        <section
-          className={cn(
-            'relative flex-1',
-            activeTab !== 'map' && 'hidden md:block',
-          )}
-        >
+        <section className={cn('relative flex-1', activeTab !== 'map' && 'hidden md:block')}>
           <MapPanel
             villages={visible}
             selected={selected}
@@ -357,7 +349,7 @@ export default function App() {
             invalidateKey={activeTab}
           />
 
-          {/* Mobile bottom sheet */}
+          {/* Mobile / tablet sheet */}
           <AnimatePresence>
             {selected && (
               <motion.div
@@ -367,28 +359,25 @@ export default function App() {
                 transition={{ type: 'spring', damping: 30, stiffness: 320 }}
                 className="absolute inset-x-3 bottom-3 z-20 lg:hidden"
               >
-                <div className="thin-scroll max-h-[52vh] overflow-y-auto rounded-2xl border border-line bg-surface/95 p-4 shadow-float backdrop-blur-xl">
-                  <VillageDetail
-                    village={selected}
-                    onClose={() => setSelected(null)}
-                    compact
-                  />
+                <div className="thin-scroll max-h-[54vh] overflow-y-auto rounded-2xl bg-surface/97 p-4 shadow-float ring-1 ring-hairline backdrop-blur-xl">
+                  <VillageDetail village={selected} onClose={() => setSelected(null)} compact />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </section>
 
-        {/* Right rail — detail / feeds */}
-        <aside className="thin-scroll hidden w-80 shrink-0 flex-col space-y-5 overflow-y-auto border-l border-line bg-surface p-4 lg:flex">
+        {/* Right rail */}
+        <aside className="thin-scroll hidden w-80 shrink-0 flex-col overflow-y-auto border-l border-hairline bg-surface lg:flex">
           <AnimatePresence mode="wait">
             {selected ? (
               <motion.div
                 key={selected.id}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16 }}
+                className="p-4"
               >
                 <VillageDetail village={selected} onClose={() => setSelected(null)} />
               </motion.div>
@@ -398,15 +387,12 @@ export default function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="space-y-5"
+                transition={{ duration: 0.16 }}
+                className="space-y-6 p-4"
               >
-                <div className="rounded-2xl border border-dashed border-line-strong bg-surface-2 p-4 text-center">
-                  <Sparkles className="mx-auto mb-1.5 size-5 text-brand" />
-                  <p className="text-[12px] font-semibold text-ink">เลือกหมู่บ้านเพื่อดูรายละเอียด</p>
-                  <p className="mt-0.5 text-[11px] text-ink-3">
-                    คลิกจุดบนแผนที่ หรือรายการด้านซ้าย
-                  </p>
+                <div className="rounded-xl bg-fill px-4 py-5 text-center">
+                  <p className="text-[12.5px] font-medium text-ink">เลือกหมู่บ้านเพื่อดูรายละเอียด</p>
+                  <p className="mt-0.5 text-[11px] text-ink-3">คลิกจุดบนแผนที่ หรือรายการด้านซ้าย</p>
                 </div>
                 {feedsAndAlerts}
               </motion.div>
@@ -416,106 +402,69 @@ export default function App() {
 
         {/* Mobile — list */}
         {activeTab === 'list' && (
-          <div className="thin-scroll flex-1 overflow-y-auto bg-bg md:hidden">
-            <div className="sticky top-0 z-10 space-y-3 border-b border-line bg-surface/95 p-4 backdrop-blur-xl">
+          <div className="thin-scroll flex-1 overflow-y-auto bg-surface md:hidden">
+            <div className="sticky top-0 z-10 space-y-2.5 border-b border-hairline bg-surface/95 px-4 py-3 backdrop-blur-xl">
               {searchBox}
-              <div className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
-                {filterBar}
-              </div>
+              <Segmented<Filter> options={filterOptions} value={filter} onChange={setFilter} />
             </div>
-            <div className="space-y-2.5 p-4">
-              {villageList('ไม่พบหมู่บ้านที่ตรงกับเงื่อนไข')}
-            </div>
+            <div className="px-2 py-2">{villageList}</div>
           </div>
         )}
 
         {/* Mobile — stats */}
         {activeTab === 'stats' && (
-          <div className="thin-scroll flex-1 space-y-5 overflow-y-auto bg-bg p-4 md:hidden">
-            <section className="rounded-2xl border border-line bg-surface p-4">
-              <SectionTitle>ภาพรวมทั้งประเทศ</SectionTitle>
+          <div className="thin-scroll flex-1 overflow-y-auto bg-bg">
+            <div className="space-y-3 bg-surface px-4 pb-5 pt-6">
+              <BigStat
+                value={summary.atRiskCount}
+                label="หมู่บ้านที่ต้องเฝ้าระวัง"
+                sub={`จากทั้งหมด ${VILLAGES.length} หมู่บ้าน`}
+                level="critical"
+              />
               <RiskDistribution counts={counts} total={VILLAGES.length} />
-            </section>
-
-            <div className="grid grid-cols-2 gap-3">
-              <StatTile label="วิกฤต" value={counts.critical} level="critical" trend="+2" />
-              <StatTile label="สูง" value={counts.high} level="high" trend="+5" />
-              <StatTile label="ปานกลาง" value={counts.medium} level="medium" trend="-1" />
-              <StatTile label="ต่ำ" value={counts.low} level="low" trend="-6" />
-            </div>
-
-            <section className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-line bg-surface p-4">
-                <Wind className="mb-2 size-4 text-risk-high" />
-                <p className="font-mono text-2xl font-bold text-ink">{summary.avgPm25}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
-                  PM2.5 เฉลี่ย µg/m³
-                </p>
-              </div>
-              <div className="rounded-2xl border border-line bg-surface p-4">
-                <Users className="mb-2 size-4 text-brand" />
-                <p className="font-mono text-2xl font-bold text-ink">
-                  {(summary.population / 1000).toFixed(1)}K
-                </p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">
-                  ประชากรเสี่ยงสูง
-                </p>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-line bg-surface p-4">
-              <SectionTitle>ประเด็นเฝ้าระวัง</SectionTitle>
-              <div className="space-y-3">
-                {[
-                  {
-                    icon: Wind,
-                    level: 'critical' as const,
-                    title: 'ความเสี่ยงระบบทางเดินหายใจ',
-                    body: 'PM2.5 ภาคเหนือสูงต่อเนื่อง คาดการณ์ผู้ป่วยหอบหืดเพิ่มขึ้น',
-                  },
-                  {
-                    icon: Waves,
-                    level: 'high' as const,
-                    title: 'เฝ้าระวังโรคฉี่หนู',
-                    body: 'น้ำท่วมขังภาคอีสาน เสี่ยงสูงใน 6 ตำบล',
-                  },
-                  {
-                    icon: Droplets,
-                    level: 'medium' as const,
-                    title: 'คุณภาพน้ำอุปโภคบริโภค',
-                    body: `พบแหล่งน้ำไม่ปลอดภัย ${summary.unsafeWater} จุดทั่วประเทศ`,
-                  },
-                ].map(({ icon: Icon, level, title, body }) => (
-                  <div key={title} className="flex gap-3">
-                    <div
-                      className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-xl',
-                        RISK[level].soft,
-                      )}
-                    >
-                      <Icon className={cn('size-4', RISK[level].text)} />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-[13px] font-bold text-ink">{title}</h4>
-                      <p className="text-[11px] leading-snug text-ink-2">{body}</p>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-4 gap-0.5 pt-1">
+                {RISK_ORDER.map((lvl) => (
+                  <CountChip
+                    key={lvl}
+                    level={lvl}
+                    value={counts[lvl]}
+                    active={filter === lvl}
+                    onClick={() => {
+                      setFilter((f) => (f === lvl ? 'all' : lvl));
+                      setActiveTab('list');
+                    }}
+                  />
                 ))}
               </div>
-            </section>
+            </div>
+
+            <div className="mt-2 grid grid-cols-2 gap-2 bg-surface px-4 py-5">
+              <div>
+                <BigStat value={summary.avgPm25} label="PM2.5 เฉลี่ย" sub="µg/m³ ทั่วประเทศ" />
+              </div>
+              <div>
+                <BigStat
+                  value={`${(summary.population / 1000).toFixed(1)}K`}
+                  label="ประชากรเสี่ยงสูง"
+                  sub="ในพื้นที่เฝ้าระวัง"
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 space-y-6 bg-surface px-4 py-5">{feedsAndAlerts}</div>
           </div>
         )}
 
         {/* Mobile — alerts */}
         {activeTab === 'alerts' && (
-          <div className="thin-scroll flex-1 space-y-5 overflow-y-auto bg-bg p-4 md:hidden">
+          <div className="thin-scroll flex-1 space-y-6 overflow-y-auto bg-surface p-4 md:hidden">
             {feedsAndAlerts}
           </div>
         )}
       </main>
 
       {/* ── Mobile nav ── */}
-      <nav className="z-50 flex h-16 shrink-0 items-center gap-1 border-t border-line bg-surface/90 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+      <nav className="z-50 flex h-15 shrink-0 items-center gap-1 border-t border-hairline bg-surface px-2 pb-[env(safe-area-inset-bottom)] md:hidden">
         <NavButton
           active={activeTab === 'map'}
           icon={MapIcon}
@@ -551,76 +500,62 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowQR(false)}
-            className="fixed inset-0 z-100 flex items-center justify-center bg-ink/25 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-100 grid place-items-center bg-ink/20 p-4 backdrop-blur-[3px]"
           >
             <motion.div
-              initial={{ scale: 0.94, y: 16 }}
+              initial={{ scale: 0.96, y: 12 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.94, y: 16 }}
-              transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+              exit={{ scale: 0.96, y: 12 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 360 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-3xl border border-line bg-surface p-6 text-center shadow-float"
+              className="w-full max-w-76 rounded-2xl bg-surface p-5 shadow-float"
             >
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-base font-bold text-ink">แชร์แอปพลิเคชัน</h2>
+              <div className="mb-4 flex items-center gap-2.5">
+                <LogoTile className="size-7 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold tracking-tight text-ink">
+                    แชร์แอปพลิเคชัน
+                  </p>
+                  <p className="truncate font-mono text-[10.5px] text-ink-3">
+                    {window.location.host}
+                  </p>
+                </div>
                 <button
                   onClick={() => setShowQR(false)}
                   aria-label="ปิด"
-                  className="rounded-full p-1.5 text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink"
+                  className="-mr-1 shrink-0 rounded-lg p-1.5 text-ink-3 transition-colors hover:bg-fill hover:text-ink"
                 >
                   <X className="size-4" />
                 </button>
               </div>
 
-              <div className="mb-5 inline-block rounded-2xl border border-line bg-white p-4">
-                <QRCodeSVG value={window.location.href} size={188} level="M" fgColor="#0f172a" />
+              <div className="grid place-items-center rounded-xl bg-fill py-6">
+                <QRCodeSVG
+                  value={window.location.href}
+                  size={168}
+                  level="M"
+                  fgColor="#0b1220"
+                  bgColor="transparent"
+                />
               </div>
 
-              <p className="mb-5 text-[12px] font-medium leading-relaxed text-ink-2">
-                สแกน QR code เพื่อเปิด HealthRisk Map AI บนมือถือของคุณ
+              <p className="mt-4 text-center text-[12px] leading-relaxed text-ink-2">
+                สแกนเพื่อเปิดบนมือถือ
               </p>
-
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2">
-                <Link2 className="size-3.5 shrink-0 text-ink-3" />
-                <span className="truncate font-mono text-[11px] text-ink-2">
-                  {window.location.host}
-                </span>
-              </div>
 
               <button
                 onClick={copyLink}
                 className={cn(
-                  'flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-bold text-white transition-all active:scale-[0.98]',
-                  copied ? 'bg-risk-low' : 'bg-brand hover:bg-brand/90',
+                  'mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all active:scale-[0.985]',
+                  copied
+                    ? 'bg-low-bg text-low-ink'
+                    : 'bg-ink text-white hover:bg-ink/90',
                 )}
               >
-                <Copy className="size-4" />
-                {copied ? 'คัดลอกลิงก์แล้ว' : 'คัดลอกลิงก์'}
+                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                {copied ? 'คัดลอกแล้ว' : 'คัดลอกลิงก์'}
               </button>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Critical banner — mobile map only */}
-      <AnimatePresence>
-        {activeTab === 'map' && !selected && counts.critical > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            className="pointer-events-none absolute inset-x-3 bottom-20 z-20 md:hidden"
-          >
-            <button
-              onClick={() => setFilter('critical')}
-              className="pointer-events-auto flex w-full items-center gap-2.5 rounded-2xl border border-red-200 bg-red-50/95 px-3.5 py-2.5 text-left shadow-float backdrop-blur"
-            >
-              <Siren className="size-4 shrink-0 text-risk-critical" />
-              <p className="flex-1 text-[11px] font-semibold leading-tight text-red-800">
-                พบพื้นที่ความเสี่ยงวิกฤต {counts.critical} แห่ง — แตะเพื่อกรองดูเฉพาะจุดเหล่านี้
-              </p>
-              <AlertTriangle className="size-4 shrink-0 text-risk-critical" />
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

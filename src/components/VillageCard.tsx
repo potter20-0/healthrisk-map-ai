@@ -1,10 +1,13 @@
-import { motion } from 'motion/react';
-import { ChevronRight, Users } from 'lucide-react';
 import type { Village } from '../data';
 import { cn } from '../lib/utils';
 import { RISK, pm25Band, riskScore } from '../lib/risk';
-import { RiskBadge } from './primitives';
 
+/**
+ * A list row, not a card. The previous version stacked a badge, two
+ * progress bars, a chevron and four labels into one tile — every element
+ * fighting for the same attention. This keeps a single scan line: name,
+ * risk, and the one number that matters.
+ */
 export function VillageCard({
   village,
   active,
@@ -17,88 +20,61 @@ export function VillageCard({
   onClick: () => void;
 }) {
   const r = RISK[village.risk];
-  const score = riskScore(village);
   const air = pm25Band(village.pm25);
+  const score = riskScore(village);
 
   return (
-    <motion.button
-      whileTap={{ scale: 0.985 }}
+    <button
       onClick={onClick}
       className={cn(
-        'relative w-full overflow-hidden rounded-2xl border bg-surface p-3.5 pl-4 text-left transition-all',
-        active
-          ? 'border-brand/40 shadow-card ring-2 ring-brand/15'
-          : 'border-line hover:border-line-strong hover:shadow-card',
+        'group relative flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors',
+        active ? 'bg-brand-bg' : 'hover:bg-fill',
       )}
     >
-      <span className={cn('absolute inset-y-0 left-0 w-1', r.bg)} aria-hidden />
+      {/* Risk spine — the only always-on colour in the row */}
+      <span
+        className={cn(
+          'h-9 w-0.75 shrink-0 rounded-full transition-all',
+          r.dot,
+          active && 'h-11',
+        )}
+        aria-hidden
+      />
 
-      <div className="mb-2.5 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-bold text-ink">{village.name}</h3>
-          <p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-medium text-ink-3">
-            <span className="truncate">{village.province}</span>
-            <span className="text-line-strong">·</span>
-            <Users className="size-3 shrink-0" />
-            <span className="font-mono">{village.population.toLocaleString('th-TH')}</span>
-            {distance !== undefined && (
-              <>
-                <span className="text-line-strong">·</span>
-                <span className="font-mono text-brand">{distance.toFixed(0)} กม.</span>
-              </>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <h3
+            className={cn(
+              'truncate text-[13.5px] font-semibold tracking-tight',
+              active ? 'text-brand' : 'text-ink',
             )}
-          </p>
-        </div>
-        <RiskBadge level={village.risk} />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">
-              PM2.5
-            </span>
-            <span className={cn('font-mono text-[11px] font-bold', RISK[air.level].text)}>
-              {village.pm25}
-              <span className="ml-0.5 text-[9px] font-medium text-ink-3">µg/m³</span>
-            </span>
-          </div>
-          <div className="h-1 overflow-hidden rounded-full bg-line">
-            <div
-              className={cn('h-full rounded-full', RISK[air.level].bg)}
-              style={{ width: `${Math.max(4, air.pct)}%` }}
-            />
-          </div>
+          >
+            {village.name}
+          </h3>
+          <span className="shrink-0 text-[11px] text-ink-3">{village.province}</span>
         </div>
 
-        <div className="h-8 w-px bg-line" />
-
-        <div className="w-[42%] shrink-0">
-          <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wider text-ink-3">
-            คาดการณ์
-          </p>
-          <p className="truncate text-[10px] font-semibold text-ink-2">{village.disease}</p>
-        </div>
-
-        <ChevronRight
-          className={cn(
-            'size-4 shrink-0 transition-colors',
-            active ? 'text-brand' : 'text-ink-3',
+        <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-ink-2">
+          <span className="truncate">{village.disease}</span>
+          {distance !== undefined && (
+            <>
+              <span className="text-ink-3">·</span>
+              <span className="shrink-0 font-mono text-brand">{distance.toFixed(0)} กม.</span>
+            </>
           )}
-        />
+        </p>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-2 border-t border-line pt-2.5">
-        <span className="text-[9px] font-bold uppercase tracking-wider text-ink-3">
-          ดัชนีรวม
-        </span>
-        <div className="h-1 flex-1 overflow-hidden rounded-full bg-line">
-          <div className={cn('h-full rounded-full', r.bg)} style={{ width: `${score}%` }} />
+      {/* Value column */}
+      <div className="shrink-0 text-right">
+        <div className={cn('font-mono text-[15px] font-semibold leading-none', RISK[air.level].text)}>
+          {village.pm25}
         </div>
-        <span className={cn('font-mono text-[10px] font-bold tabular-nums', r.text)}>
-          {score}
-        </span>
+        <div className="mt-1 flex items-center justify-end gap-1">
+          <span className="text-[10px] text-ink-3">ดัชนี</span>
+          <span className={cn('font-mono text-[10.5px] font-semibold', r.text)}>{score}</span>
+        </div>
       </div>
-    </motion.button>
+    </button>
   );
 }

@@ -7,15 +7,19 @@ export interface RiskStyle {
   label: string;
   /** Latin label for compact/mono contexts */
   code: string;
-  /** Raw hex — for Leaflet markers and inline SVG */
+  /** Vivid hex — Leaflet markers, inline SVG, chart fills */
   hex: string;
   /** Sort weight, high = more urgent */
   rank: number;
+  /** Vivid fill (dots, bars) */
+  dot: string;
+  /** AA-contrast text on white or on the `bg` tint */
   text: string;
+  /** Container tint */
   bg: string;
-  soft: string;
-  softText: string;
-  border: string;
+  /** Border matched to the tint */
+  line: string;
+  /** Inset ring matched to the tint */
   ring: string;
 }
 
@@ -23,50 +27,46 @@ export const RISK: Record<RiskLevel, RiskStyle> = {
   critical: {
     label: 'วิกฤต',
     code: 'CRITICAL',
-    hex: '#dc2626',
+    hex: '#e5484d',
     rank: 4,
-    text: 'text-risk-critical',
-    bg: 'bg-risk-critical',
-    soft: 'bg-red-50',
-    softText: 'text-red-700',
-    border: 'border-red-200',
-    ring: 'ring-red-200',
+    dot: 'bg-critical',
+    text: 'text-critical-ink',
+    bg: 'bg-critical-bg',
+    line: 'border-critical-line',
+    ring: 'ring-critical-line',
   },
   high: {
     label: 'สูง',
     code: 'HIGH',
-    hex: '#ea580c',
+    hex: '#f76808',
     rank: 3,
-    text: 'text-risk-high',
-    bg: 'bg-risk-high',
-    soft: 'bg-orange-50',
-    softText: 'text-orange-700',
-    border: 'border-orange-200',
-    ring: 'ring-orange-200',
+    dot: 'bg-high',
+    text: 'text-high-ink',
+    bg: 'bg-high-bg',
+    line: 'border-high-line',
+    ring: 'ring-high-line',
   },
   medium: {
     label: 'ปานกลาง',
     code: 'MEDIUM',
-    hex: '#d97706',
+    hex: '#f5a524',
     rank: 2,
-    text: 'text-risk-medium',
-    bg: 'bg-risk-medium',
-    soft: 'bg-amber-50',
-    softText: 'text-amber-700',
-    border: 'border-amber-200',
-    ring: 'ring-amber-200',
+    dot: 'bg-medium',
+    text: 'text-medium-ink',
+    bg: 'bg-medium-bg',
+    line: 'border-medium-line',
+    ring: 'ring-medium-line',
   },
   low: {
     label: 'ต่ำ',
     code: 'LOW',
-    hex: '#16a34a',
+    hex: '#30a46c',
     rank: 1,
-    text: 'text-risk-low',
-    bg: 'bg-risk-low',
-    soft: 'bg-emerald-50',
-    softText: 'text-emerald-700',
-    border: 'border-emerald-200',
-    ring: 'ring-emerald-200',
+    dot: 'bg-low',
+    text: 'text-low-ink',
+    bg: 'bg-low-bg',
+    line: 'border-low-line',
+    ring: 'ring-low-line',
   },
 };
 
