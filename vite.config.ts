@@ -5,10 +5,16 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  // Vercel (and any root-domain host) serves from "/"; GitHub Pages serves from
+  // a project subpath. Vercel sets VERCEL=1 during its builds, so the same
+  // `npm run build` produces correct asset URLs on both. Dev always stays at "/".
+  // Set BASE_PATH explicitly to override for any other host.
+  const base =
+    process.env.BASE_PATH ??
+    (mode !== 'production' || process.env.VERCEL ? '/' : '/healthrisk-map-ai/');
+
   return {
-    // Served from https://<user>.github.io/healthrisk-map-ai/ in production.
-    // Dev stays at "/" so `npm run dev` is unaffected.
-    base: mode === 'production' ? '/healthrisk-map-ai/' : '/',
+    base,
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
