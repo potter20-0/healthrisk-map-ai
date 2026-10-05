@@ -97,7 +97,7 @@ export function BigStat({
     <div>
       <div
         className={cn(
-          'font-mono text-[2.6rem] font-bold leading-none tracking-tighter',
+          'font-mono text-[2.15rem] font-bold leading-none tracking-tighter sm:text-[2.6rem]',
           level ? RISK[level].text : 'text-ink',
         )}
       >
@@ -127,13 +127,13 @@ export function CountChip({
     <button
       onClick={onClick}
       className={cn(
-        'group flex flex-col gap-1 rounded-xl px-3 py-2.5 text-left transition-all',
+        'group flex min-w-0 flex-col gap-1 rounded-xl px-2 py-2.5 text-left transition-all sm:px-3',
         active ? cn(r.bg, 'ring-1 ring-inset', r.ring) : 'hover:bg-fill',
       )}
     >
-      <span className="flex items-center gap-1.5">
-        <span className={cn('size-2 rounded-full', r.dot)} />
-        <span className="text-[11px] font-medium text-ink-2">{r.label}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className={cn('size-2 shrink-0 rounded-full', r.dot)} />
+        <span className="truncate text-[11px] font-medium text-ink-2">{r.label}</span>
       </span>
       <span className={cn('font-mono text-xl font-bold leading-none', r.text)}>{value}</span>
     </button>
@@ -276,11 +276,11 @@ export function Segmented<T extends string>({
           <button
             key={o.value}
             onClick={() => onChange(o.value)}
+            title={o.count !== undefined ? `${o.label} · ${o.count}` : o.label}
             className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-[0.6rem] px-2 py-1.5 text-[11.5px] font-medium transition-all',
-              active
-                ? 'bg-surface text-ink shadow-xs'
-                : 'text-ink-2 hover:text-ink',
+              // min-w-0 lets the label truncate instead of forcing overflow
+              'flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[0.6rem] px-1 py-1.5 text-[11.5px] font-medium transition-all sm:gap-1.5 sm:px-2',
+              active ? 'bg-surface text-ink shadow-xs' : 'text-ink-2 hover:text-ink',
             )}
           >
             {o.dot && (
@@ -290,10 +290,11 @@ export function Segmented<T extends string>({
               />
             )}
             <span className="truncate">{o.label}</span>
+            {/* The count is the first thing to go when space is tight */}
             {o.count !== undefined && (
               <span
                 className={cn(
-                  'font-mono text-[10px]',
+                  'hidden font-mono text-[10px] sm:inline',
                   active ? 'text-ink-3' : 'text-ink-3/70',
                 )}
               >

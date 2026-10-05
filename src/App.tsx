@@ -29,10 +29,11 @@ import {
   Segmented,
   TimelineItem,
 } from './components/primitives';
-import { LogoTile, Wordmark } from './components/Logo';
+import { Wordmark } from './components/Logo';
 import { VillageCard } from './components/VillageCard';
 import { VillageDetail } from './components/VillageDetail';
 import { MapPanel, THAILAND_VIEW, type MapView } from './components/MapPanel';
+import { ChatBot } from './components/ChatBot';
 
 type Tab = 'map' | 'list' | 'stats' | 'alerts';
 type Filter = RiskLevel | 'all';
@@ -69,6 +70,7 @@ export default function App() {
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showNotice, setShowNotice] = useState(true);
 
   /* ── Derived ──────────────────────────────────────────────── */
 
@@ -266,15 +268,60 @@ export default function App() {
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-bg">
+      {/* ── Portfolio notice ── */}
+      <AnimatePresence>
+        {showNotice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowNotice(false)}
+            className="fixed inset-0 z-100 grid place-items-center bg-ink/20 p-4 backdrop-blur-[3px]"
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 12 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 360 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-88 rounded-2xl bg-surface p-5 shadow-float"
+            >
+              <div className="mb-3 flex items-start gap-2.5">
+                <p className="min-w-0 flex-1 text-[13.5px] font-semibold leading-snug tracking-tight text-ink">
+                  This prototype was used as part of Mr. Sirawich Wuttikornwatee&apos;s portfolio
+                  submission for university.
+                </p>
+                <button
+                  onClick={() => setShowNotice(false)}
+                  aria-label="ปิด"
+                  className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-ink-3 transition-colors hover:bg-fill hover:text-ink"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowNotice(false)}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-[13px] font-semibold text-white transition-all hover:bg-ink/90 active:scale-[0.985]"
+              >
+                เข้าใจแล้ว
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Header ── */}
-      <header className="z-50 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface px-3 md:px-4">
+      <header className="z-50 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface px-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] md:px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <LogoTile className="size-8 shrink-0" />
           <span className="min-w-0 truncate">
             <Wordmark />
           </span>
-          <span className="ml-1 hidden rounded-md bg-brand-bg px-1.5 py-0.5 text-[10px] font-semibold text-brand sm:inline">
-            AI
+          <span
+            title="This prototype was used as part of Mr. Sirawich Wuttikornwatee's portfolio submission for university."
+            className="hidden shrink-0 rounded-full bg-fill px-2 py-0.5 text-[10px] font-medium tracking-wide text-ink-3 sm:inline-block"
+          >
+            Portfolio Prototype
           </span>
         </div>
 
@@ -303,7 +350,8 @@ export default function App() {
       {/* ── Body ── */}
       <main className="relative flex flex-1 overflow-hidden">
         {/* Left rail */}
-        <aside className="hidden w-84 shrink-0 flex-col border-r border-hairline bg-surface md:flex">
+        {/* Left rail — narrows on tablet so the map keeps usable width */}
+        <aside className="hidden w-72 shrink-0 flex-col border-r border-hairline bg-surface md:flex lg:w-80 2xl:w-88">
           {/* Hero — one big number, not four equal tiles */}
           <div className="px-4 pb-4 pt-5">
             <BigStat
@@ -357,9 +405,10 @@ export default function App() {
                 animate={{ y: 0 }}
                 exit={{ y: '110%' }}
                 transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-                className="absolute inset-x-3 bottom-3 z-20 lg:hidden"
+                className="absolute inset-x-2 bottom-2 z-20 sm:inset-x-3 sm:bottom-3 md:max-w-sm xl:hidden"
               >
-                <div className="thin-scroll max-h-[54vh] overflow-y-auto rounded-2xl bg-surface/97 p-4 shadow-float ring-1 ring-hairline backdrop-blur-xl">
+                {/* Landscape phones have almost no height to give — cap harder there */}
+                <div className="thin-scroll max-h-[min(60vh,26rem)] overflow-y-auto rounded-2xl bg-surface/97 p-4 shadow-float ring-1 ring-hairline backdrop-blur-xl">
                   <VillageDetail village={selected} onClose={() => setSelected(null)} compact />
                 </div>
               </motion.div>
@@ -368,7 +417,8 @@ export default function App() {
         </section>
 
         {/* Right rail */}
-        <aside className="thin-scroll hidden w-80 shrink-0 flex-col overflow-y-auto border-l border-hairline bg-surface lg:flex">
+        {/* Right rail waits for xl — at lg it would squeeze the map to ~380px */}
+        <aside className="thin-scroll hidden w-80 shrink-0 flex-col overflow-y-auto border-l border-hairline bg-surface xl:flex 2xl:w-88">
           <AnimatePresence mode="wait">
             {selected ? (
               <motion.div
@@ -413,7 +463,7 @@ export default function App() {
 
         {/* Mobile — stats */}
         {activeTab === 'stats' && (
-          <div className="thin-scroll flex-1 overflow-y-auto bg-bg">
+          <div className="thin-scroll flex-1 overflow-y-auto bg-bg md:hidden">
             <div className="space-y-3 bg-surface px-4 pb-5 pt-6">
               <BigStat
                 value={summary.atRiskCount}
@@ -464,7 +514,8 @@ export default function App() {
       </main>
 
       {/* ── Mobile nav ── */}
-      <nav className="z-50 flex h-15 shrink-0 items-center gap-1 border-t border-hairline bg-surface px-2 pb-[env(safe-area-inset-bottom)] md:hidden">
+      {/* min-h, not h — otherwise the safe-area padding eats the row height */}
+      <nav className="z-50 flex min-h-15 shrink-0 items-center gap-1 border-t border-hairline bg-surface px-2 pb-[env(safe-area-inset-bottom)] md:hidden">
         <NavButton
           active={activeTab === 'map'}
           icon={MapIcon}
@@ -511,7 +562,6 @@ export default function App() {
               className="w-full max-w-76 rounded-2xl bg-surface p-5 shadow-float"
             >
               <div className="mb-4 flex items-center gap-2.5">
-                <LogoTile className="size-7 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-semibold tracking-tight text-ink">
                     แชร์แอปพลิเคชัน
@@ -559,6 +609,8 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ChatBot />
     </div>
   );
 }

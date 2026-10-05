@@ -12,11 +12,13 @@ const THAILAND_BOUNDS = L.latLngBounds([5.4, 97.1], [20.7, 105.9]);
 
 const BASEMAPS = {
   light: {
+    // CARTO's free light_all tiles now watermark "API KEY REQUIRED" without a
+    // paid key — Esri's Light Gray Canvas is the closest free, keyless match.
     label: 'Light',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    url: 'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
+      '&copy; <a href="https://www.esri.com">Esri</a> &mdash; Esri, DeLorme, NAVTEQ',
+    subdomains: '',
   },
   terrain: {
     label: 'Terrain',
@@ -39,6 +41,11 @@ export interface MapView {
 function ViewController({ view }: { view: MapView }) {
   const map = useMap();
   useEffect(() => {
+    // The container can still be display:none at this instant (a village
+    // pick on mobile flips the tab and the view in the same update) — a
+    // stale/zero cached size sends flyTo's animation math to NaN and
+    // crashes the whole tree, so force a re-measure immediately before it.
+    map.invalidateSize();
     map.flyTo(view.center, view.zoom, { duration: 1.1 });
     // Re-fly whenever a new selection is made, even to the same village.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -134,7 +141,8 @@ function MapButton({
       title={label}
       aria-label={label}
       className={cn(
-        'grid size-8 place-items-center transition-colors hover:bg-fill active:bg-hairline',
+        // Roomier hit area on touch, tighter on pointer devices
+        'grid size-10 place-items-center transition-colors hover:bg-fill active:bg-hairline sm:size-8',
         active ? 'text-brand' : 'text-ink-2 hover:text-ink',
       )}
     >
@@ -167,9 +175,12 @@ export function MapPanel({
   const [map, setMap] = useState<L.Map | null>(null);
   const [basemap, setBasemap] = useState<BasemapKey>('light');
 
-  // The map is display:none behind mobile tabs — Leaflet needs a nudge on return.
+  // The map is display:none behind mobile tabs — Leaflet needs a nudge on
+  // return. Only nudge while it's actually the visible tab: invalidating
+  // size while hidden measures a 0×0 container and caches that as the
+  // map's size, which later sends flyTo's animation math to NaN.
   useEffect(() => {
-    if (!map) return;
+    if (!map || invalidateKey !== 'map') return;
     const t = setTimeout(() => map.invalidateSize(), 220);
     return () => clearTimeout(t);
   }, [map, invalidateKey]);
@@ -248,8 +259,14 @@ export function MapPanel({
         />
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-3 left-3 z-10 hidden items-center gap-3 rounded-full bg-surface/95 px-3 py-1.5 shadow-pop ring-1 ring-hairline backdrop-blur sm:flex">
+      {/* Legend and count sit where the detail sheet lands, so they step aside
+          while one is open on anything narrower than the xl two-rail layout. */}
+      <div
+        className={cn(
+          'absolute bottom-3 left-3 z-10 items-center gap-3 rounded-full bg-surface/95 px-3 py-1.5 shadow-pop ring-1 ring-hairline backdrop-blur',
+          selected ? 'hidden xl:flex' : 'hidden sm:flex',
+        )}
+      >
         {RISK_ORDER.map((lvl) => (
           <span key={lvl} className="flex items-center gap-1.5 text-[10.5px] text-ink-2">
             <span className={cn('size-2 rounded-full', RISK[lvl].dot)} />
@@ -258,8 +275,12 @@ export function MapPanel({
         ))}
       </div>
 
-      {/* Result count */}
-      <div className="absolute bottom-3 right-3 z-10 rounded-full bg-surface/95 px-2.5 py-1 text-[10.5px] text-ink-2 shadow-pop ring-1 ring-hairline backdrop-blur">
+      <div
+        className={cn(
+          'absolute bottom-3 right-3 z-10 rounded-full bg-surface/95 px-2.5 py-1 text-[10.5px] text-ink-2 shadow-pop ring-1 ring-hairline backdrop-blur',
+          selected ? 'hidden xl:block' : 'block',
+        )}
+      >
         <span className="font-mono font-semibold text-ink">{villages.length}</span> จุด
       </div>
     </div>

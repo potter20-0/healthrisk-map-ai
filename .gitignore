@@ -10,3 +10,6 @@ coverage/
 # Local tooling
 .vite/
 .claude/
+
+.vercel
+.env*

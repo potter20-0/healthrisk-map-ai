@@ -1,15 +1,29 @@
-import { MapPin, ShieldCheck, Sparkles, Users, X } from 'lucide-react';
+import { MapPin, Radio, Users, X } from 'lucide-react';
 import type { Village } from '../data';
 import { cn } from '../lib/utils';
 import {
   RISK,
   WATER_STYLE,
   chemicalBand,
-  guidance,
   pm25Band,
   riskScore,
 } from '../lib/risk';
+import { useLiveAqi } from '../lib/useLiveAqi';
 import { MetricRow, RiskBadge } from './primitives';
+import { DiseaseAnalysis } from './DiseaseAnalysis';
+import { AreaNews } from './AreaNews';
+
+/** "1 ต.ค. 20:00 น." — short Thai date+time for the live reading. */
+function formatLiveTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return (
+    d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) +
+    ' ' +
+    d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) +
+    ' น.'
+  );
+}
 
 export function VillageDetail({
   village,
@@ -21,11 +35,17 @@ export function VillageDetail({
   compact?: boolean;
 }) {
   const r = RISK[village.risk];
-  const air = pm25Band(village.pm25);
   const water = WATER_STYLE[village.water];
   const chem = chemicalBand(village.chemical);
   const score = riskScore(village);
-  const tips = guidance(village);
+
+  // Live air quality (WAQI) when a token is configured; otherwise sample data.
+  const live = useLiveAqi(village.lat, village.lng);
+  const livePm25 = live.status === 'ready' ? live.data.pm25 : null;
+  const pm25 = livePm25 ?? village.pm25;
+  const air = pm25Band(pm25);
+  // Feed live PM2.5 into the air-driven guidance when available.
+  const effectiveVillage = livePm25 != null ? { ...village, pm25 } : village;
 
   return (
     <div className="flex flex-col">
@@ -78,35 +98,46 @@ export function VillageDetail({
         </div>
       </div>
 
-      {/* Prediction */}
-      <div className="mt-4 flex gap-2.5 rounded-xl border border-hairline p-3">
-        <Sparkles className={cn('mt-px size-4 shrink-0', r.text)} />
-        <div>
-          <p className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-3">
-            AI Prediction
+      {/* Live air-quality status (Open-Meteo, no key required) */}
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-hairline px-3 py-2">
+        <Radio
+          className={cn(
+            'size-3.5 shrink-0',
+            live.status === 'ready' ? 'text-low-ink' : 'text-ink-3',
+            live.status === 'loading' && 'animate-pulse',
+          )}
+        />
+        {live.status === 'loading' && (
+          <span className="text-[11px] text-ink-3">กำลังดึงข้อมูลอากาศสด…</span>
+        )}
+        {live.status === 'error' && (
+          <span className="text-[11px] text-ink-3">
+            เชื่อมต่อข้อมูลสดไม่ได้ — แสดงข้อมูลจำลองแทน
+          </span>
+        )}
+        {live.status === 'ready' && (
+          <p className="min-w-0 flex-1 truncate text-[11px] text-ink-2">
+            <span className="font-semibold text-low-ink">อากาศสด</span> · AQI {live.data.aqi}
+            <span className="text-ink-3">
+              {' '}· {formatLiveTime(live.data.time)} · {live.data.source}
+            </span>
           </p>
-          <p className="mt-0.5 text-[13px] font-medium leading-snug text-ink">
-            เสี่ยง<span className={cn('font-semibold', r.text)}> {village.disease}</span>
-            {village.prediction === '—' ? (
-              <span className="text-ink-2"> — ไม่พบแนวโน้มผิดปกติ</span>
-            ) : (
-              <>
-                {' '}ภายใน <span className="font-mono font-semibold">{village.prediction}</span>
-              </>
-            )}
-          </p>
-        </div>
+        )}
       </div>
 
-      {/* Metrics */}
-      <div className="mt-5 space-y-3.5">
+      {/* Metrics — the evidence behind the risk score */}
+      <div className="mt-4 space-y-3.5">
         <MetricRow
           label="ฝุ่น PM2.5"
-          value={village.pm25}
+          value={pm25}
           unit="µg/m³"
           pct={air.pct}
           level={air.level}
-          hint="เกณฑ์ปลอดภัย ≤ 25 µg/m³"
+          hint={
+            livePm25 != null
+              ? 'ค่าสดจาก Open-Meteo · เกณฑ์ปลอดภัย ≤ 25 µg/m³'
+              : 'ข้อมูลจำลอง · เกณฑ์ปลอดภัย ≤ 25 µg/m³'
+          }
         />
         <MetricRow
           label="คุณภาพน้ำ"
@@ -123,22 +154,13 @@ export function VillageDetail({
         />
       </div>
 
-      {/* Guidance */}
-      {!compact && (
-        <div className="mt-5 border-t border-hairline pt-4">
-          <p className="mb-2.5 text-[13px] font-semibold tracking-tight text-ink">
-            คำแนะนำการปฏิบัติ
-          </p>
-          <ul className="space-y-2.5">
-            {tips.map((tip) => (
-              <li key={tip} className="flex gap-2 text-[12px] leading-relaxed text-ink-2">
-                <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-brand" />
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Disease analysis + prevention */}
+      <div className="mt-5 border-t border-hairline pt-1">
+        <DiseaseAnalysis village={effectiveVillage} compact={compact} />
+      </div>
+
+      {/* Local-area news & situation (real, AI-analyzed) */}
+      <AreaNews village={village} compact={compact} />
     </div>
   );
 }
